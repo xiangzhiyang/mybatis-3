@@ -123,20 +123,20 @@ public class XMLConfigBuilder extends BaseBuilder {
  		}
  	}
 
-  private Properties settingsAsProperties(XNode context) {
-    if (context == null) {
-      return new Properties();
-    }
-    Properties props = context.getChildrenAsProperties();
-    // Check that all settings are known to the configuration class
-    MetaClass metaConfig = MetaClass.forClass(Configuration.class, localReflectorFactory);
-    for (Object key : props.keySet()) {
-      if (!metaConfig.hasSetter(String.valueOf(key))) {
-        throw new BuilderException("The setting " + key + " is not known.  Make sure you spelled it correctly (case sensitive).");
-      }
-    }
-    return props;
-  }
+ 	private Properties settingsAsProperties(XNode context) {
+ 		if (context == null) {
+ 			return new Properties();
+ 		}
+ 		Properties props = context.getChildrenAsProperties();
+ 		// Check that all settings are known to the configuration class
+ 		MetaClass metaConfig = MetaClass.forClass(Configuration.class, localReflectorFactory);
+ 		for (Object key : props.keySet()) {
+ 			if (!metaConfig.hasSetter(String.valueOf(key))) {
+ 				throw new BuilderException("The setting " + key + " is not known.  Make sure you spelled it correctly (case sensitive).");
+ 			}
+ 		}
+ 		return props;
+ 	}
 
   private void loadCustomVfs(Properties props) throws ClassNotFoundException {
     String value = props.getProperty("vfsImpl");

@@ -53,30 +53,30 @@ import org.apache.ibatis.type.JdbcType;
  */
 public class XMLConfigBuilder extends BaseBuilder {
 
-  private boolean parsed;
-  private final XPathParser parser;
-  private String environment;
-  private final ReflectorFactory localReflectorFactory = new DefaultReflectorFactory();
+	private boolean parsed;
+	private final XPathParser parser;
+	private String environment;
+	private final ReflectorFactory localReflectorFactory = new DefaultReflectorFactory();
 
-  public XMLConfigBuilder(Reader reader) {
-    this(reader, null, null);
-  }
+	public XMLConfigBuilder(Reader reader) {
+		this(reader, null, null);
+	}
 
-  public XMLConfigBuilder(Reader reader, String environment) {
-    this(reader, environment, null);
-  }
+	public XMLConfigBuilder(Reader reader, String environment) {
+		this(reader, environment, null);
+	}
 
-  public XMLConfigBuilder(Reader reader, String environment, Properties props) {
-    this(new XPathParser(reader, true, props, new XMLMapperEntityResolver()), environment, props);
-  }
+	public XMLConfigBuilder(Reader reader, String environment, Properties props) {
+		this(new XPathParser(reader, true, props, new XMLMapperEntityResolver()), environment, props);
+	}
 
-  public XMLConfigBuilder(InputStream inputStream) {
-    this(inputStream, null, null);
-  }
+	public XMLConfigBuilder(InputStream inputStream) {
+		this(inputStream, null, null);
+	}
 
-  public XMLConfigBuilder(InputStream inputStream, String environment) {
-    this(inputStream, environment, null);
-  }
+	public XMLConfigBuilder(InputStream inputStream, String environment) {
+		this(inputStream, environment, null);
+	}
 
   public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
     this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
@@ -100,28 +100,28 @@ public class XMLConfigBuilder extends BaseBuilder {
     return configuration;
   }
 
-  private void parseConfiguration(XNode root) {
-    try {
-      // issue #117 read properties first
-      propertiesElement(root.evalNode("properties"));
-      Properties settings = settingsAsProperties(root.evalNode("settings"));
-      loadCustomVfs(settings);
-      loadCustomLogImpl(settings);
-      typeAliasesElement(root.evalNode("typeAliases"));
-      pluginElement(root.evalNode("plugins"));
-      objectFactoryElement(root.evalNode("objectFactory"));
-      objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
-      reflectorFactoryElement(root.evalNode("reflectorFactory"));
-      settingsElement(settings);
-      // read it after objectFactory and objectWrapperFactory issue #631
-      environmentsElement(root.evalNode("environments"));
-      databaseIdProviderElement(root.evalNode("databaseIdProvider"));
-      typeHandlerElement(root.evalNode("typeHandlers"));
-      mapperElement(root.evalNode("mappers"));
-    } catch (Exception e) {
-      throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
-    }
-  }
+ 	private void parseConfiguration(XNode root) {
+ 		try {
+ 			// issue #117 read properties first
+ 			propertiesElement(root.evalNode("properties"));
+ 			Properties settings = settingsAsProperties(root.evalNode("settings"));
+ 			loadCustomVfs(settings);
+ 			loadCustomLogImpl(settings);
+ 			typeAliasesElement(root.evalNode("typeAliases"));
+ 			pluginElement(root.evalNode("plugins"));
+ 			objectFactoryElement(root.evalNode("objectFactory"));
+ 			objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
+ 			reflectorFactoryElement(root.evalNode("reflectorFactory"));
+ 			settingsElement(settings);
+ 			// read it after objectFactory and objectWrapperFactory issue #631
+ 			environmentsElement(root.evalNode("environments"));
+ 			databaseIdProviderElement(root.evalNode("databaseIdProvider"));
+ 			typeHandlerElement(root.evalNode("typeHandlers"));
+ 			mapperElement(root.evalNode("mappers"));
+ 		} catch (Exception e) {
+ 			throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
+ 		}
+ 	}
 
   private Properties settingsAsProperties(XNode context) {
     if (context == null) {

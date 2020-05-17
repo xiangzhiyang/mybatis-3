@@ -59,11 +59,12 @@ public class MapperBuilderAssistant extends BaseBuilder {
   private Cache currentCache;
   private boolean unresolvedCacheRef; // issue #676
 
-  public MapperBuilderAssistant(Configuration configuration, String resource) {
-    super(configuration);
-    ErrorContext.instance().resource(resource);
-    this.resource = resource;
-  }
+	public MapperBuilderAssistant(Configuration configuration, String resource) {
+		super(configuration);
+		//使用本地线程线程(ThreadLocal)
+		ErrorContext.instance().resource(resource);
+		this.resource = resource;
+	}
 
   public String getCurrentNamespace() {
     return currentNamespace;
@@ -210,36 +211,36 @@ public class MapperBuilderAssistant extends BaseBuilder {
     return resultMap;
   }
 
-  public Discriminator buildDiscriminator(
-      Class<?> resultType,
-      String column,
-      Class<?> javaType,
-      JdbcType jdbcType,
-      Class<? extends TypeHandler<?>> typeHandler,
-      Map<String, String> discriminatorMap) {
-    ResultMapping resultMapping = buildResultMapping(
-        resultType,
-        null,
-        column,
-        javaType,
-        jdbcType,
-        null,
-        null,
-        null,
-        null,
-        typeHandler,
-        new ArrayList<>(),
-        null,
-        null,
-        false);
-    Map<String, String> namespaceDiscriminatorMap = new HashMap<>();
-    for (Map.Entry<String, String> e : discriminatorMap.entrySet()) {
-      String resultMap = e.getValue();
-      resultMap = applyCurrentNamespace(resultMap, true);
-      namespaceDiscriminatorMap.put(e.getKey(), resultMap);
-    }
-    return new Discriminator.Builder(configuration, resultMapping, namespaceDiscriminatorMap).build();
-  }
+	public Discriminator buildDiscriminator(
+			Class<?> resultType,
+			String column,
+			Class<?> javaType,
+			JdbcType jdbcType,
+			Class<? extends TypeHandler<?>> typeHandler,
+			Map<String, String> discriminatorMap) {
+		ResultMapping resultMapping = buildResultMapping(
+				resultType,
+				null,
+				column,
+				javaType,
+				jdbcType,
+				null,
+				null,
+				null,
+				null,
+				typeHandler,
+				new ArrayList<>(),
+				null,
+				null,
+				false);
+		Map<String, String> namespaceDiscriminatorMap = new HashMap<>();
+		for (Map.Entry<String, String> e : discriminatorMap.entrySet()) {
+			String resultMap = e.getValue();
+			resultMap = applyCurrentNamespace(resultMap, true);
+			namespaceDiscriminatorMap.put(e.getKey(), resultMap);
+		}
+		return new Discriminator.Builder(configuration, resultMapping, namespaceDiscriminatorMap).build();
+	}
 
   public MappedStatement addMappedStatement(
       String id,

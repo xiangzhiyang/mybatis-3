@@ -122,30 +122,31 @@ public class MapperAnnotationBuilder {
     this.type = type;
   }
 
-  public void parse() {
-    String resource = type.toString();
-    if (!configuration.isResourceLoaded(resource)) {
-      loadXmlResource();
-      configuration.addLoadedResource(resource);
-      assistant.setCurrentNamespace(type.getName());
-      parseCache();
-      parseCacheRef();
-      for (Method method : type.getMethods()) {
-        if (!canHaveStatement(method)) {
-          continue;
-        }
-        if (getSqlCommandType(method) == SqlCommandType.SELECT && method.getAnnotation(ResultMap.class) == null) {
-          parseResultMap(method);
-        }
-        try {
-          parseStatement(method);
-        } catch (IncompleteElementException e) {
-          configuration.addIncompleteMethod(new MethodResolver(this, method));
-        }
-      }
-    }
-    parsePendingMethods();
-  }
+	public void parse() {
+		String resource = type.toString();
+		if (!configuration.isResourceLoaded(resource)) {
+			//加载xml文件
+			loadXmlResource();
+			configuration.addLoadedResource(resource);
+			assistant.setCurrentNamespace(type.getName());
+			parseCache();
+			parseCacheRef();
+			for (Method method : type.getMethods()) {
+				if (!canHaveStatement(method)) {
+					continue;
+				}
+				if (getSqlCommandType(method) == SqlCommandType.SELECT && method.getAnnotation(ResultMap.class) == null) {
+					parseResultMap(method);
+				}
+				try {
+					parseStatement(method);
+				} catch (IncompleteElementException e) {
+					configuration.addIncompleteMethod(new MethodResolver(this, method));
+				}
+			}
+		}
+		parsePendingMethods();
+	}
 
   private boolean canHaveStatement(Method method) {
     // issue #237
@@ -167,28 +168,29 @@ public class MapperAnnotationBuilder {
     }
   }
 
-  private void loadXmlResource() {
-    // Spring may not know the real resource name so we check a flag
-    // to prevent loading again a resource twice
-    // this flag is set at XMLMapperBuilder#bindMapperForNamespace
-    if (!configuration.isResourceLoaded("namespace:" + type.getName())) {
-      String xmlResource = type.getName().replace('.', '/') + ".xml";
-      // #1347
-      InputStream inputStream = type.getResourceAsStream("/" + xmlResource);
-      if (inputStream == null) {
-        // Search XML mapper that is not in the module but in the classpath.
-        try {
-          inputStream = Resources.getResourceAsStream(type.getClassLoader(), xmlResource);
-        } catch (IOException e2) {
-          // ignore, resource is not required
-        }
-      }
-      if (inputStream != null) {
-        XMLMapperBuilder xmlParser = new XMLMapperBuilder(inputStream, assistant.getConfiguration(), xmlResource, configuration.getSqlFragments(), type.getName());
-        xmlParser.parse();
-      }
-    }
-  }
+	private void loadXmlResource() {
+		// Spring may not know the real resource name so we check a flag
+		// to prevent loading again a resource twice
+		// this flag is set at XMLMapperBuilder#bindMapperForNamespace
+		//加载xml文件解析文件内容
+		if (!configuration.isResourceLoaded("namespace:" + type.getName())) {
+			String xmlResource = type.getName().replace('.', '/') + ".xml";
+			// #1347
+			InputStream inputStream = type.getResourceAsStream("/" + xmlResource);
+			if (inputStream == null) {
+				// Search XML mapper that is not in the module but in the classpath.
+				try {
+					inputStream = Resources.getResourceAsStream(type.getClassLoader(), xmlResource);
+				} catch (IOException e2) {
+					// ignore, resource is not required
+				}
+			}
+			if (inputStream != null) {
+				XMLMapperBuilder xmlParser = new XMLMapperBuilder(inputStream, assistant.getConfiguration(), xmlResource, configuration.getSqlFragments(), type.getName());
+				xmlParser.parse();
+			}
+		}
+	}
 
   private void parseCache() {
     CacheNamespace cacheDomain = type.getAnnotation(CacheNamespace.class);

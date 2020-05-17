@@ -78,45 +78,61 @@ public class XMLConfigBuilder extends BaseBuilder {
 		this(inputStream, environment, null);
 	}
 
-  public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
-    this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
-  }
+	public XMLConfigBuilder(InputStream inputStream, String environment, Properties props) {
+		this(new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
+	}
 
-  private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
-    super(new Configuration());
-    ErrorContext.instance().resource("SQL Mapper Configuration");
-    this.configuration.setVariables(props);
-    this.parsed = false;
-    this.environment = environment;
-    this.parser = parser;
-  }
+	private XMLConfigBuilder(XPathParser parser, String environment, Properties props) {
+		//配置信息实例化
+		super(new Configuration());
+		ErrorContext.instance().resource("SQL Mapper Configuration");
+		this.configuration.setVariables(props);
+		this.parsed = false;
+		this.environment = environment;
+		this.parser = parser;
+	}
 
-  public Configuration parse() {
-    if (parsed) {
-      throw new BuilderException("Each XMLConfigBuilder can only be used once.");
-    }
-    parsed = true;
-    parseConfiguration(parser.evalNode("/configuration"));
-    return configuration;
-  }
+	public Configuration parse() {
+		if (parsed) {
+			throw new BuilderException("Each XMLConfigBuilder can only be used once.");
+		}
+		parsed = true;
+		//解析mybatis配置文件方法
+		parseConfiguration(parser.evalNode("/configuration"));
+		return configuration;
+	}
 
- 	private void parseConfiguration(XNode root) {
+	private void parseConfiguration(XNode root) {
  		try {
  			// issue #117 read properties first
+ 			//解析属性信息	properties
  			propertiesElement(root.evalNode("properties"));
+ 			//解析配置信息	settings
  			Properties settings = settingsAsProperties(root.evalNode("settings"));
+ 			//
  			loadCustomVfs(settings);
+ 			//
  			loadCustomLogImpl(settings);
+ 			//类型别名信息	typeAliases
  			typeAliasesElement(root.evalNode("typeAliases"));
+ 			//解析插件信息	plugins
  			pluginElement(root.evalNode("plugins"));
+ 			//设置对象工厂	objectFactory
  			objectFactoryElement(root.evalNode("objectFactory"));
+ 			//
  			objectWrapperFactoryElement(root.evalNode("objectWrapperFactory"));
+ 			//
  			reflectorFactoryElement(root.evalNode("reflectorFactory"));
+ 			//设置configuration属性
  			settingsElement(settings);
  			// read it after objectFactory and objectWrapperFactory issue #631
+ 			//设置数据源信息
  			environmentsElement(root.evalNode("environments"));
+ 			//数据库厂商标识
  			databaseIdProviderElement(root.evalNode("databaseIdProvider"));
+ 			//设置类型处理器	typeHandlers
  			typeHandlerElement(root.evalNode("typeHandlers"));
+ 			//设置映射器	mappers
  			mapperElement(root.evalNode("mappers"));
  		} catch (Exception e) {
  			throw new BuilderException("Error parsing SQL Mapper Configuration. Cause: " + e, e);
@@ -138,266 +154,289 @@ public class XMLConfigBuilder extends BaseBuilder {
  		return props;
  	}
 
-  private void loadCustomVfs(Properties props) throws ClassNotFoundException {
-    String value = props.getProperty("vfsImpl");
-    if (value != null) {
-      String[] clazzes = value.split(",");
-      for (String clazz : clazzes) {
-        if (!clazz.isEmpty()) {
-          @SuppressWarnings("unchecked")
-          Class<? extends VFS> vfsImpl = (Class<? extends VFS>)Resources.classForName(clazz);
-          configuration.setVfsImpl(vfsImpl);
-        }
-      }
-    }
-  }
+	private void loadCustomVfs(Properties props) throws ClassNotFoundException {
+		String value = props.getProperty("vfsImpl");
+		if (value != null) {
+			String[] clazzes = value.split(",");
+			for (String clazz : clazzes) {
+				if (!clazz.isEmpty()) {
+					@SuppressWarnings("unchecked")
+					Class<? extends VFS> vfsImpl = (Class<? extends VFS>)Resources.classForName(clazz);
+					configuration.setVfsImpl(vfsImpl);
+				}
+			}
+		}
+	}
 
-  private void loadCustomLogImpl(Properties props) {
-    Class<? extends Log> logImpl = resolveClass(props.getProperty("logImpl"));
-    configuration.setLogImpl(logImpl);
-  }
+	private void loadCustomLogImpl(Properties props) {
+		Class<? extends Log> logImpl = resolveClass(props.getProperty("logImpl"));
+		configuration.setLogImpl(logImpl);
+	}
 
-  private void typeAliasesElement(XNode parent) {
-    if (parent != null) {
-      for (XNode child : parent.getChildren()) {
-        if ("package".equals(child.getName())) {
-          String typeAliasPackage = child.getStringAttribute("name");
-          configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
-        } else {
-          String alias = child.getStringAttribute("alias");
-          String type = child.getStringAttribute("type");
-          try {
-            Class<?> clazz = Resources.classForName(type);
-            if (alias == null) {
-              typeAliasRegistry.registerAlias(clazz);
-            } else {
-              typeAliasRegistry.registerAlias(alias, clazz);
-            }
-          } catch (ClassNotFoundException e) {
-            throw new BuilderException("Error registering typeAlias for '" + alias + "'. Cause: " + e, e);
-          }
-        }
-      }
-    }
-  }
+	//类型别名信息
+	private void typeAliasesElement(XNode parent) {
+		if (parent != null) {
+			for (XNode child : parent.getChildren()) {
+				//使用package 包节点
+				if ("package".equals(child.getName())) {
+					String typeAliasPackage = child.getStringAttribute("name");
+					configuration.getTypeAliasRegistry().registerAliases(typeAliasPackage);
+				} else {
+					String alias = child.getStringAttribute("alias");
+					String type = child.getStringAttribute("type");
+					try {
+						Class<?> clazz = Resources.classForName(type);
+						if (alias == null) {
+							typeAliasRegistry.registerAlias(clazz);
+						} else {
+							typeAliasRegistry.registerAlias(alias, clazz);
+						}
+					} catch (ClassNotFoundException e) {
+						throw new BuilderException("Error registering typeAlias for '" + alias + "'. Cause: " + e, e);
+					}
+				}
+			}
+		}
+	}
 
-  private void pluginElement(XNode parent) throws Exception {
-    if (parent != null) {
-      for (XNode child : parent.getChildren()) {
-        String interceptor = child.getStringAttribute("interceptor");
-        Properties properties = child.getChildrenAsProperties();
-        Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).getDeclaredConstructor().newInstance();
-        interceptorInstance.setProperties(properties);
-        configuration.addInterceptor(interceptorInstance);
-      }
-    }
-  }
+	//设置插件方法
+	private void pluginElement(XNode parent) throws Exception {
+		if (parent != null) {
+			//遍历所有插件信息
+			for (XNode child : parent.getChildren()) {
+				String interceptor = child.getStringAttribute("interceptor");
+				//获取插件参数信息
+				Properties properties = child.getChildrenAsProperties();
+				//使用父类BaseBuilder中resolveClass()方法 返回类	获取(Constructor)构造器 并实例化
+				Interceptor interceptorInstance = (Interceptor) resolveClass(interceptor).getDeclaredConstructor().newInstance();
+				//参数赋值
+				interceptorInstance.setProperties(properties);
+				//添加实例化的插件对象
+				configuration.addInterceptor(interceptorInstance);
+			}
+		}
+	}
 
-  private void objectFactoryElement(XNode context) throws Exception {
-    if (context != null) {
-      String type = context.getStringAttribute("type");
-      Properties properties = context.getChildrenAsProperties();
-      ObjectFactory factory = (ObjectFactory) resolveClass(type).getDeclaredConstructor().newInstance();
-      factory.setProperties(properties);
-      configuration.setObjectFactory(factory);
-    }
-  }
+	private void objectFactoryElement(XNode context) throws Exception {
+		if (context != null) {
+			String type = context.getStringAttribute("type");
+			Properties properties = context.getChildrenAsProperties();
+			ObjectFactory factory = (ObjectFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+			factory.setProperties(properties);
+			configuration.setObjectFactory(factory);
+		}
+	}
 
-  private void objectWrapperFactoryElement(XNode context) throws Exception {
-    if (context != null) {
-      String type = context.getStringAttribute("type");
-      ObjectWrapperFactory factory = (ObjectWrapperFactory) resolveClass(type).getDeclaredConstructor().newInstance();
-      configuration.setObjectWrapperFactory(factory);
-    }
-  }
+	private void objectWrapperFactoryElement(XNode context) throws Exception {
+		if (context != null) {
+			String type = context.getStringAttribute("type");
+			ObjectWrapperFactory factory = (ObjectWrapperFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+			configuration.setObjectWrapperFactory(factory);
+		}
+	}
 
-  private void reflectorFactoryElement(XNode context) throws Exception {
-    if (context != null) {
-      String type = context.getStringAttribute("type");
-      ReflectorFactory factory = (ReflectorFactory) resolveClass(type).getDeclaredConstructor().newInstance();
-      configuration.setReflectorFactory(factory);
-    }
-  }
+	private void reflectorFactoryElement(XNode context) throws Exception {
+		if (context != null) {
+			String type = context.getStringAttribute("type");
+			ReflectorFactory factory = (ReflectorFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+			configuration.setReflectorFactory(factory);
+		}
+	}
 
-  private void propertiesElement(XNode context) throws Exception {
-    if (context != null) {
-      Properties defaults = context.getChildrenAsProperties();
-      String resource = context.getStringAttribute("resource");
-      String url = context.getStringAttribute("url");
-      if (resource != null && url != null) {
-        throw new BuilderException("The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
-      }
-      if (resource != null) {
-        defaults.putAll(Resources.getResourceAsProperties(resource));
-      } else if (url != null) {
-        defaults.putAll(Resources.getUrlAsProperties(url));
-      }
-      Properties vars = configuration.getVariables();
-      if (vars != null) {
-        defaults.putAll(vars);
-      }
-      parser.setVariables(defaults);
-      configuration.setVariables(defaults);
-    }
-  }
+	private void propertiesElement(XNode context) throws Exception {
+		if (context != null) {
+			Properties defaults = context.getChildrenAsProperties();
+			String resource = context.getStringAttribute("resource");
+			String url = context.getStringAttribute("url");
+			if (resource != null && url != null) {
+				throw new BuilderException("The properties element cannot specify both a URL and a resource based property file reference.  Please specify one or the other.");
+			}
+			if (resource != null) {
+				defaults.putAll(Resources.getResourceAsProperties(resource));
+			} else if (url != null) {
+				defaults.putAll(Resources.getUrlAsProperties(url));
+			}
+			Properties vars = configuration.getVariables();
+			if (vars != null) {
+				defaults.putAll(vars);
+			}
+			parser.setVariables(defaults);
+			configuration.setVariables(defaults);
+		}
+	}
 
-  private void settingsElement(Properties props) {
-    configuration.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
-    configuration.setAutoMappingUnknownColumnBehavior(AutoMappingUnknownColumnBehavior.valueOf(props.getProperty("autoMappingUnknownColumnBehavior", "NONE")));
-    configuration.setCacheEnabled(booleanValueOf(props.getProperty("cacheEnabled"), true));
-    configuration.setProxyFactory((ProxyFactory) createInstance(props.getProperty("proxyFactory")));
-    configuration.setLazyLoadingEnabled(booleanValueOf(props.getProperty("lazyLoadingEnabled"), false));
-    configuration.setAggressiveLazyLoading(booleanValueOf(props.getProperty("aggressiveLazyLoading"), false));
-    configuration.setMultipleResultSetsEnabled(booleanValueOf(props.getProperty("multipleResultSetsEnabled"), true));
-    configuration.setUseColumnLabel(booleanValueOf(props.getProperty("useColumnLabel"), true));
-    configuration.setUseGeneratedKeys(booleanValueOf(props.getProperty("useGeneratedKeys"), false));
-    configuration.setDefaultExecutorType(ExecutorType.valueOf(props.getProperty("defaultExecutorType", "SIMPLE")));
-    configuration.setDefaultStatementTimeout(integerValueOf(props.getProperty("defaultStatementTimeout"), null));
-    configuration.setDefaultFetchSize(integerValueOf(props.getProperty("defaultFetchSize"), null));
-    configuration.setDefaultResultSetType(resolveResultSetType(props.getProperty("defaultResultSetType")));
-    configuration.setMapUnderscoreToCamelCase(booleanValueOf(props.getProperty("mapUnderscoreToCamelCase"), false));
-    configuration.setSafeRowBoundsEnabled(booleanValueOf(props.getProperty("safeRowBoundsEnabled"), false));
-    configuration.setLocalCacheScope(LocalCacheScope.valueOf(props.getProperty("localCacheScope", "SESSION")));
-    configuration.setJdbcTypeForNull(JdbcType.valueOf(props.getProperty("jdbcTypeForNull", "OTHER")));
-    configuration.setLazyLoadTriggerMethods(stringSetValueOf(props.getProperty("lazyLoadTriggerMethods"), "equals,clone,hashCode,toString"));
-    configuration.setSafeResultHandlerEnabled(booleanValueOf(props.getProperty("safeResultHandlerEnabled"), true));
-    configuration.setDefaultScriptingLanguage(resolveClass(props.getProperty("defaultScriptingLanguage")));
-    configuration.setDefaultEnumTypeHandler(resolveClass(props.getProperty("defaultEnumTypeHandler")));
-    configuration.setCallSettersOnNulls(booleanValueOf(props.getProperty("callSettersOnNulls"), false));
-    configuration.setUseActualParamName(booleanValueOf(props.getProperty("useActualParamName"), true));
-    configuration.setReturnInstanceForEmptyRow(booleanValueOf(props.getProperty("returnInstanceForEmptyRow"), false));
-    configuration.setLogPrefix(props.getProperty("logPrefix"));
-    configuration.setConfigurationFactory(resolveClass(props.getProperty("configurationFactory")));
-  }
+	private void settingsElement(Properties props) {
+		configuration.setAutoMappingBehavior(AutoMappingBehavior.valueOf(props.getProperty("autoMappingBehavior", "PARTIAL")));
+		configuration.setAutoMappingUnknownColumnBehavior(AutoMappingUnknownColumnBehavior.valueOf(props.getProperty("autoMappingUnknownColumnBehavior", "NONE")));
+		configuration.setCacheEnabled(booleanValueOf(props.getProperty("cacheEnabled"), true));
+		configuration.setProxyFactory((ProxyFactory) createInstance(props.getProperty("proxyFactory")));
+		configuration.setLazyLoadingEnabled(booleanValueOf(props.getProperty("lazyLoadingEnabled"), false));
+		configuration.setAggressiveLazyLoading(booleanValueOf(props.getProperty("aggressiveLazyLoading"), false));
+		configuration.setMultipleResultSetsEnabled(booleanValueOf(props.getProperty("multipleResultSetsEnabled"), true));
+		configuration.setUseColumnLabel(booleanValueOf(props.getProperty("useColumnLabel"), true));
+		configuration.setUseGeneratedKeys(booleanValueOf(props.getProperty("useGeneratedKeys"), false));
+		configuration.setDefaultExecutorType(ExecutorType.valueOf(props.getProperty("defaultExecutorType", "SIMPLE")));
+		configuration.setDefaultStatementTimeout(integerValueOf(props.getProperty("defaultStatementTimeout"), null));
+		configuration.setDefaultFetchSize(integerValueOf(props.getProperty("defaultFetchSize"), null));
+		configuration.setDefaultResultSetType(resolveResultSetType(props.getProperty("defaultResultSetType")));
+		configuration.setMapUnderscoreToCamelCase(booleanValueOf(props.getProperty("mapUnderscoreToCamelCase"), false));
+		configuration.setSafeRowBoundsEnabled(booleanValueOf(props.getProperty("safeRowBoundsEnabled"), false));
+		configuration.setLocalCacheScope(LocalCacheScope.valueOf(props.getProperty("localCacheScope", "SESSION")));
+		configuration.setJdbcTypeForNull(JdbcType.valueOf(props.getProperty("jdbcTypeForNull", "OTHER")));
+		configuration.setLazyLoadTriggerMethods(stringSetValueOf(props.getProperty("lazyLoadTriggerMethods"), "equals,clone,hashCode,toString"));
+		configuration.setSafeResultHandlerEnabled(booleanValueOf(props.getProperty("safeResultHandlerEnabled"), true));
+		configuration.setDefaultScriptingLanguage(resolveClass(props.getProperty("defaultScriptingLanguage")));
+		configuration.setDefaultEnumTypeHandler(resolveClass(props.getProperty("defaultEnumTypeHandler")));
+		configuration.setCallSettersOnNulls(booleanValueOf(props.getProperty("callSettersOnNulls"), false));
+		configuration.setUseActualParamName(booleanValueOf(props.getProperty("useActualParamName"), true));
+		configuration.setReturnInstanceForEmptyRow(booleanValueOf(props.getProperty("returnInstanceForEmptyRow"), false));
+		configuration.setLogPrefix(props.getProperty("logPrefix"));
+		configuration.setConfigurationFactory(resolveClass(props.getProperty("configurationFactory")));
+	}
 
-  private void environmentsElement(XNode context) throws Exception {
-    if (context != null) {
-      if (environment == null) {
-        environment = context.getStringAttribute("default");
-      }
-      for (XNode child : context.getChildren()) {
-        String id = child.getStringAttribute("id");
-        if (isSpecifiedEnvironment(id)) {
-          TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
-          DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
-          DataSource dataSource = dsFactory.getDataSource();
-          Environment.Builder environmentBuilder = new Environment.Builder(id)
-              .transactionFactory(txFactory)
-              .dataSource(dataSource);
-          configuration.setEnvironment(environmentBuilder.build());
-        }
-      }
-    }
-  }
+	//初始化环境配置信息
+	private void environmentsElement(XNode context) throws Exception {
+		if (context != null) {
+			if (environment == null) {
+				//获取默认配置信息
+				environment = context.getStringAttribute("default");
+			}
+			for (XNode child : context.getChildren()) {
+				String id = child.getStringAttribute("id");
+				//判断是否默认的配置信息节点 解析
+				if (isSpecifiedEnvironment(id)) {
+					//事务管理器工厂实例化
+					TransactionFactory txFactory = transactionManagerElement(child.evalNode("transactionManager"));
+					//数据源工厂实例化
+					DataSourceFactory dsFactory = dataSourceElement(child.evalNode("dataSource"));
+					DataSource dataSource = dsFactory.getDataSource();
+					//环境配置类实例化		事务管理器 数据源信息
+					Environment.Builder environmentBuilder = new Environment.Builder(id)
+							.transactionFactory(txFactory)
+							.dataSource(dataSource);
+					configuration.setEnvironment(environmentBuilder.build());
+				}
+			}
+		}
+	}
 
-  private void databaseIdProviderElement(XNode context) throws Exception {
-    DatabaseIdProvider databaseIdProvider = null;
-    if (context != null) {
-      String type = context.getStringAttribute("type");
-      // awful patch to keep backward compatibility
-      if ("VENDOR".equals(type)) {
-        type = "DB_VENDOR";
-      }
-      Properties properties = context.getChildrenAsProperties();
-      databaseIdProvider = (DatabaseIdProvider) resolveClass(type).getDeclaredConstructor().newInstance();
-      databaseIdProvider.setProperties(properties);
-    }
-    Environment environment = configuration.getEnvironment();
-    if (environment != null && databaseIdProvider != null) {
-      String databaseId = databaseIdProvider.getDatabaseId(environment.getDataSource());
-      configuration.setDatabaseId(databaseId);
-    }
-  }
+	//数据库厂商标识 数据库提供商初始化
+	private void databaseIdProviderElement(XNode context) throws Exception {
+		DatabaseIdProvider databaseIdProvider = null;
+		if (context != null) {
+			String type = context.getStringAttribute("type");
+			// awful patch to keep backward compatibility
+			if ("VENDOR".equals(type)) {
+				type = "DB_VENDOR";
+			}
+			Properties properties = context.getChildrenAsProperties();
+			databaseIdProvider = (DatabaseIdProvider) resolveClass(type).getDeclaredConstructor().newInstance();
+			databaseIdProvider.setProperties(properties);
+		}
+		Environment environment = configuration.getEnvironment();
+		if (environment != null && databaseIdProvider != null) {
+			String databaseId = databaseIdProvider.getDatabaseId(environment.getDataSource());
+			configuration.setDatabaseId(databaseId);
+		}
+	}
 
-  private TransactionFactory transactionManagerElement(XNode context) throws Exception {
-    if (context != null) {
-      String type = context.getStringAttribute("type");
-      Properties props = context.getChildrenAsProperties();
-      TransactionFactory factory = (TransactionFactory) resolveClass(type).getDeclaredConstructor().newInstance();
-      factory.setProperties(props);
-      return factory;
-    }
-    throw new BuilderException("Environment declaration requires a TransactionFactory.");
-  }
+	//事务管理器
+	private TransactionFactory transactionManagerElement(XNode context) throws Exception {
+		if (context != null) {
+			String type = context.getStringAttribute("type");
+			Properties props = context.getChildrenAsProperties();
+			TransactionFactory factory = (TransactionFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+			factory.setProperties(props);
+			return factory;
+		}
+		throw new BuilderException("Environment declaration requires a TransactionFactory.");
+	}
 
-  private DataSourceFactory dataSourceElement(XNode context) throws Exception {
-    if (context != null) {
-      String type = context.getStringAttribute("type");
-      Properties props = context.getChildrenAsProperties();
-      DataSourceFactory factory = (DataSourceFactory) resolveClass(type).getDeclaredConstructor().newInstance();
-      factory.setProperties(props);
-      return factory;
-    }
-    throw new BuilderException("Environment declaration requires a DataSourceFactory.");
-  }
+	private DataSourceFactory dataSourceElement(XNode context) throws Exception {
+		if (context != null) {
+			String type = context.getStringAttribute("type");
+			Properties props = context.getChildrenAsProperties();
+			DataSourceFactory factory = (DataSourceFactory) resolveClass(type).getDeclaredConstructor().newInstance();
+			factory.setProperties(props);
+			return factory;
+		}
+		throw new BuilderException("Environment declaration requires a DataSourceFactory.");
+	}
 
-  private void typeHandlerElement(XNode parent) {
-    if (parent != null) {
-      for (XNode child : parent.getChildren()) {
-        if ("package".equals(child.getName())) {
-          String typeHandlerPackage = child.getStringAttribute("name");
-          typeHandlerRegistry.register(typeHandlerPackage);
-        } else {
-          String javaTypeName = child.getStringAttribute("javaType");
-          String jdbcTypeName = child.getStringAttribute("jdbcType");
-          String handlerTypeName = child.getStringAttribute("handler");
-          Class<?> javaTypeClass = resolveClass(javaTypeName);
-          JdbcType jdbcType = resolveJdbcType(jdbcTypeName);
-          Class<?> typeHandlerClass = resolveClass(handlerTypeName);
-          if (javaTypeClass != null) {
-            if (jdbcType == null) {
-              typeHandlerRegistry.register(javaTypeClass, typeHandlerClass);
-            } else {
-              typeHandlerRegistry.register(javaTypeClass, jdbcType, typeHandlerClass);
-            }
-          } else {
-            typeHandlerRegistry.register(typeHandlerClass);
-          }
-        }
-      }
-    }
-  }
+	//类型处理器容器赋值
+	private void typeHandlerElement(XNode parent) {
+		if (parent != null) {
+			for (XNode child : parent.getChildren()) {
+				if ("package".equals(child.getName())) {
+					String typeHandlerPackage = child.getStringAttribute("name");
+					typeHandlerRegistry.register(typeHandlerPackage);
+				} else {
+					String javaTypeName = child.getStringAttribute("javaType");
+					String jdbcTypeName = child.getStringAttribute("jdbcType");
+					String handlerTypeName = child.getStringAttribute("handler");
+					Class<?> javaTypeClass = resolveClass(javaTypeName);
+					JdbcType jdbcType = resolveJdbcType(jdbcTypeName);
+					Class<?> typeHandlerClass = resolveClass(handlerTypeName);
+					if (javaTypeClass != null) {
+						if (jdbcType == null) {
+							typeHandlerRegistry.register(javaTypeClass, typeHandlerClass);
+						} else {
+							typeHandlerRegistry.register(javaTypeClass, jdbcType, typeHandlerClass);
+						}
+					} else {
+						typeHandlerRegistry.register(typeHandlerClass);
+					}
+				}
+			}
+		}
+	}
 
-  private void mapperElement(XNode parent) throws Exception {
-    if (parent != null) {
-      for (XNode child : parent.getChildren()) {
-        if ("package".equals(child.getName())) {
-          String mapperPackage = child.getStringAttribute("name");
-          configuration.addMappers(mapperPackage);
-        } else {
-          String resource = child.getStringAttribute("resource");
-          String url = child.getStringAttribute("url");
-          String mapperClass = child.getStringAttribute("class");
-          if (resource != null && url == null && mapperClass == null) {
-            ErrorContext.instance().resource(resource);
-            InputStream inputStream = Resources.getResourceAsStream(resource);
-            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
-            mapperParser.parse();
-          } else if (resource == null && url != null && mapperClass == null) {
-            ErrorContext.instance().resource(url);
-            InputStream inputStream = Resources.getUrlAsStream(url);
-            XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
-            mapperParser.parse();
-          } else if (resource == null && url == null && mapperClass != null) {
-            Class<?> mapperInterface = Resources.classForName(mapperClass);
-            configuration.addMapper(mapperInterface);
-          } else {
-            throw new BuilderException("A mapper element may only specify a url, resource or class, but not more than one.");
-          }
-        }
-      }
-    }
-  }
+	//映射器容器赋值
+	private void mapperElement(XNode parent) throws Exception {
+		if (parent != null) {
+			for (XNode child : parent.getChildren()) {
+				//使用包名
+				if ("package".equals(child.getName())) {
+					String mapperPackage = child.getStringAttribute("name");
+					configuration.addMappers(mapperPackage);
+				} else {
+					//其他获取属性值resource/url/class
+					String resource = child.getStringAttribute("resource");
+					String url = child.getStringAttribute("url");
+					String mapperClass = child.getStringAttribute("class");
+					if (resource != null && url == null && mapperClass == null) {
+						ErrorContext.instance().resource(resource);
+						InputStream inputStream = Resources.getResourceAsStream(resource);
+						//映射器构建对象实例化
+						XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, resource, configuration.getSqlFragments());
+						//映射器构建对象解析xml文件实例化映射器
+						mapperParser.parse();
+					} else if (resource == null && url != null && mapperClass == null) {
+						ErrorContext.instance().resource(url);
+						InputStream inputStream = Resources.getUrlAsStream(url);
+						XMLMapperBuilder mapperParser = new XMLMapperBuilder(inputStream, configuration, url, configuration.getSqlFragments());
+						mapperParser.parse();
+					} else if (resource == null && url == null && mapperClass != null) {
+						Class<?> mapperInterface = Resources.classForName(mapperClass);
+						//根据映射器接口实例化映射器
+						configuration.addMapper(mapperInterface);
+					} else {
+						throw new BuilderException("A mapper element may only specify a url, resource or class, but not more than one.");
+					}
+				}
+			}
+		}
+	}
 
-  private boolean isSpecifiedEnvironment(String id) {
-    if (environment == null) {
-      throw new BuilderException("No environment specified.");
-    } else if (id == null) {
-      throw new BuilderException("Environment requires an id attribute.");
-    } else if (environment.equals(id)) {
-      return true;
-    }
-    return false;
-  }
+	private boolean isSpecifiedEnvironment(String id) {
+		if (environment == null) {
+			throw new BuilderException("No environment specified.");
+		} else if (id == null) {
+			throw new BuilderException("Environment requires an id attribute.");
+		} else if (environment.equals(id)) {
+			return true;
+		}
+		return false;
+	}
 
 }

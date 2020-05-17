@@ -24,14 +24,13 @@ import java.util.Properties;
  * @author Clinton Begin
  */
 public interface ObjectFactory {
-
-  /**
-   * Sets configuration properties.
-   * @param properties configuration properties
-   */
-  default void setProperties(Properties properties) {
-    // NOP
-  }
+	/**
+	 * Sets configuration properties.
+	 * @param properties configuration properties
+	 */
+	default void setProperties(Properties properties) {
+		// NOP
+	}
 
   /**
    * Creates a new object with default constructor.
@@ -42,7 +41,7 @@ public interface ObjectFactory {
    *          Object type
    * @return the t
    */
-  <T> T create(Class<T> type);
+	<T> T create(Class<T> type);
 
   /**
    * Creates a new object with the specified constructor and params.
@@ -57,7 +56,7 @@ public interface ObjectFactory {
    *          Constructor argument values
    * @return the t
    */
-  <T> T create(Class<T> type, List<Class<?>> constructorArgTypes, List<Object> constructorArgs);
+	<T> T create(Class<T> type, List<Class<?>> constructorArgTypes, List<Object> constructorArgs);
 
   /**
    * Returns true if this object can have a set of other objects.
@@ -70,6 +69,6 @@ public interface ObjectFactory {
    * @return whether it is a collection or not
    * @since 3.1.0
    */
-  <T> boolean isCollection(Class<T> type);
+	<T> boolean isCollection(Class<T> type);
 
 }

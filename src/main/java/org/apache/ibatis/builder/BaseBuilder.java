@@ -32,9 +32,11 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  * @author Clinton Begin
  */
 public abstract class BaseBuilder {
-  protected final Configuration configuration;
-  protected final TypeAliasRegistry typeAliasRegistry;
-  protected final TypeHandlerRegistry typeHandlerRegistry;
+	protected final Configuration configuration;
+	//类型别名信息容器 来之于配置类对象
+	protected final TypeAliasRegistry typeAliasRegistry;
+	//类型处理器信息容器 来之于配置类对象
+	protected final TypeHandlerRegistry typeHandlerRegistry;
 
   public BaseBuilder(Configuration configuration) {
     this.configuration = configuration;
@@ -108,16 +110,17 @@ public abstract class BaseBuilder {
     }
   }
 
-  protected <T> Class<? extends T> resolveClass(String alias) {
-    if (alias == null) {
-      return null;
-    }
-    try {
-      return resolveAlias(alias);
-    } catch (Exception e) {
-      throw new BuilderException("Error resolving class. Cause: " + e, e);
-    }
-  }
+	protected <T> Class<? extends T> resolveClass(String alias) {
+		if (alias == null) {
+			return null;
+		}
+		try {
+			//根据别名获取类
+			return resolveAlias(alias);
+		} catch (Exception e) {
+			throw new BuilderException("Error resolving class. Cause: " + e, e);
+		}
+	}
 
   protected TypeHandler<?> resolveTypeHandler(Class<?> javaType, String typeHandlerAlias) {
     if (typeHandlerAlias == null) {

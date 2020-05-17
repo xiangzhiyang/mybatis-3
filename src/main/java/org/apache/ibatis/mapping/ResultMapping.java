@@ -30,244 +30,244 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  */
 public class ResultMapping {
 
-  private Configuration configuration;
-  private String property;
-  private String column;
-  private Class<?> javaType;
-  private JdbcType jdbcType;
-  private TypeHandler<?> typeHandler;
-  private String nestedResultMapId;
-  private String nestedQueryId;
-  private Set<String> notNullColumns;
-  private String columnPrefix;
-  private List<ResultFlag> flags;
-  private List<ResultMapping> composites;
-  private String resultSet;
-  private String foreignColumn;
-  private boolean lazy;
+	private Configuration configuration;
+	private String property;
+	private String column;
+	private Class<?> javaType;
+	private JdbcType jdbcType;
+	private TypeHandler<?> typeHandler;
+	private String nestedResultMapId;
+	private String nestedQueryId;
+	private Set<String> notNullColumns;
+	private String columnPrefix;
+	private List<ResultFlag> flags;
+	private List<ResultMapping> composites;
+	private String resultSet;
+	private String foreignColumn;
+	private boolean lazy;
 
-  ResultMapping() {
-  }
+	ResultMapping() {
+	}
 
-  public static class Builder {
-    private ResultMapping resultMapping = new ResultMapping();
+	public static class Builder {
+		private ResultMapping resultMapping = new ResultMapping();
 
-    public Builder(Configuration configuration, String property, String column, TypeHandler<?> typeHandler) {
-      this(configuration, property);
-      resultMapping.column = column;
-      resultMapping.typeHandler = typeHandler;
-    }
+		public Builder(Configuration configuration, String property, String column, TypeHandler<?> typeHandler) {
+			this(configuration, property);
+			resultMapping.column = column;
+			resultMapping.typeHandler = typeHandler;
+		}
 
-    public Builder(Configuration configuration, String property, String column, Class<?> javaType) {
-      this(configuration, property);
-      resultMapping.column = column;
-      resultMapping.javaType = javaType;
-    }
+	    public Builder(Configuration configuration, String property, String column, Class<?> javaType) {
+	    	this(configuration, property);
+	    	resultMapping.column = column;
+	    	resultMapping.javaType = javaType;
+	    }
 
-    public Builder(Configuration configuration, String property) {
-      resultMapping.configuration = configuration;
-      resultMapping.property = property;
-      resultMapping.flags = new ArrayList<>();
-      resultMapping.composites = new ArrayList<>();
-      resultMapping.lazy = configuration.isLazyLoadingEnabled();
-    }
+		public Builder(Configuration configuration, String property) {
+			resultMapping.configuration = configuration;
+			resultMapping.property = property;
+			resultMapping.flags = new ArrayList<>();
+			resultMapping.composites = new ArrayList<>();
+			resultMapping.lazy = configuration.isLazyLoadingEnabled();
+		}
+		
+		public Builder javaType(Class<?> javaType) {
+			resultMapping.javaType = javaType;
+			return this;
+		}
+		
+		public Builder jdbcType(JdbcType jdbcType) {
+			resultMapping.jdbcType = jdbcType;
+			return this;
+		}
+		
+		public Builder nestedResultMapId(String nestedResultMapId) {
+			resultMapping.nestedResultMapId = nestedResultMapId;
+			return this;
+		}
+		
+		public Builder nestedQueryId(String nestedQueryId) {
+			resultMapping.nestedQueryId = nestedQueryId;
+			return this;
+		}
+		
+		public Builder resultSet(String resultSet) {
+			resultMapping.resultSet = resultSet;
+			return this;
+		}
+		
+		public Builder foreignColumn(String foreignColumn) {
+			resultMapping.foreignColumn = foreignColumn;
+			return this;
+		}
+		
+		public Builder notNullColumns(Set<String> notNullColumns) {
+			resultMapping.notNullColumns = notNullColumns;
+			return this;
+		}
+		
+		public Builder columnPrefix(String columnPrefix) {
+			resultMapping.columnPrefix = columnPrefix;
+			return this;
+		}
+		
+		public Builder flags(List<ResultFlag> flags) {
+			resultMapping.flags = flags;
+			return this;
+		}
+		
+		public Builder typeHandler(TypeHandler<?> typeHandler) {
+			resultMapping.typeHandler = typeHandler;
+			return this;
+		}
 
-    public Builder javaType(Class<?> javaType) {
-      resultMapping.javaType = javaType;
-      return this;
-    }
+		public Builder composites(List<ResultMapping> composites) {
+			resultMapping.composites = composites;
+			return this;
+		}
+		
+		public Builder lazy(boolean lazy) {
+			resultMapping.lazy = lazy;
+			return this;
+		}
 
-    public Builder jdbcType(JdbcType jdbcType) {
-      resultMapping.jdbcType = jdbcType;
-      return this;
-    }
+		public ResultMapping build() {
+			// lock down collections
+			resultMapping.flags = Collections.unmodifiableList(resultMapping.flags);
+			resultMapping.composites = Collections.unmodifiableList(resultMapping.composites);
+			resolveTypeHandler();
+			validate();
+			return resultMapping;
+		}
 
-    public Builder nestedResultMapId(String nestedResultMapId) {
-      resultMapping.nestedResultMapId = nestedResultMapId;
-      return this;
-    }
+		private void validate() {
+			// Issue #697: cannot define both nestedQueryId and nestedResultMapId
+			if (resultMapping.nestedQueryId != null && resultMapping.nestedResultMapId != null) {
+				throw new IllegalStateException("Cannot define both nestedQueryId and nestedResultMapId in property " + resultMapping.property);
+			}
+			// Issue #5: there should be no mappings without typehandler
+			if (resultMapping.nestedQueryId == null && resultMapping.nestedResultMapId == null && resultMapping.typeHandler == null) {
+				throw new IllegalStateException("No typehandler found for property " + resultMapping.property);
+			}
+			// Issue #4 and GH #39: column is optional only in nested resultmaps but not in the rest
+			if (resultMapping.nestedResultMapId == null && resultMapping.column == null && resultMapping.composites.isEmpty()) {
+				throw new IllegalStateException("Mapping is missing column attribute for property " + resultMapping.property);
+			}
+			if (resultMapping.getResultSet() != null) {
+				int numColumns = 0;
+				if (resultMapping.column != null) {
+					numColumns = resultMapping.column.split(",").length;
+				}
+				int numForeignColumns = 0;
+				if (resultMapping.foreignColumn != null) {
+					numForeignColumns = resultMapping.foreignColumn.split(",").length;
+				}
+				if (numColumns != numForeignColumns) {
+					throw new IllegalStateException("There should be the same number of columns and foreignColumns in property " + resultMapping.property);
+				}
+			}
+		}
 
-    public Builder nestedQueryId(String nestedQueryId) {
-      resultMapping.nestedQueryId = nestedQueryId;
-      return this;
-    }
+		private void resolveTypeHandler() {
+			if (resultMapping.typeHandler == null && resultMapping.javaType != null) {
+				Configuration configuration = resultMapping.configuration;
+				TypeHandlerRegistry typeHandlerRegistry = configuration.getTypeHandlerRegistry();
+				resultMapping.typeHandler = typeHandlerRegistry.getTypeHandler(resultMapping.javaType, resultMapping.jdbcType);
+			}
+		}
 
-    public Builder resultSet(String resultSet) {
-      resultMapping.resultSet = resultSet;
-      return this;
-    }
+		public Builder column(String column) {
+			resultMapping.column = column;
+			return this;
+		}
+	}
 
-    public Builder foreignColumn(String foreignColumn) {
-      resultMapping.foreignColumn = foreignColumn;
-      return this;
-    }
+	public String getProperty() {
+		return property;
+	}
 
-    public Builder notNullColumns(Set<String> notNullColumns) {
-      resultMapping.notNullColumns = notNullColumns;
-      return this;
-    }
+	public String getColumn() {
+		return column;
+	}
 
-    public Builder columnPrefix(String columnPrefix) {
-      resultMapping.columnPrefix = columnPrefix;
-      return this;
-    }
+	public Class<?> getJavaType() {
+		return javaType;
+	}
 
-    public Builder flags(List<ResultFlag> flags) {
-      resultMapping.flags = flags;
-      return this;
-    }
+	public JdbcType getJdbcType() {
+		return jdbcType;
+	}
 
-    public Builder typeHandler(TypeHandler<?> typeHandler) {
-      resultMapping.typeHandler = typeHandler;
-      return this;
-    }
+	public TypeHandler<?> getTypeHandler() {
+		return typeHandler;
+	}
 
-    public Builder composites(List<ResultMapping> composites) {
-      resultMapping.composites = composites;
-      return this;
-    }
+	public String getNestedResultMapId() {
+		return nestedResultMapId;
+	}
 
-    public Builder lazy(boolean lazy) {
-      resultMapping.lazy = lazy;
-      return this;
-    }
+	public String getNestedQueryId() {
+		return nestedQueryId;
+	}
 
-    public ResultMapping build() {
-      // lock down collections
-      resultMapping.flags = Collections.unmodifiableList(resultMapping.flags);
-      resultMapping.composites = Collections.unmodifiableList(resultMapping.composites);
-      resolveTypeHandler();
-      validate();
-      return resultMapping;
-    }
+	public Set<String> getNotNullColumns() {
+		return notNullColumns;
+	}
 
-    private void validate() {
-      // Issue #697: cannot define both nestedQueryId and nestedResultMapId
-      if (resultMapping.nestedQueryId != null && resultMapping.nestedResultMapId != null) {
-        throw new IllegalStateException("Cannot define both nestedQueryId and nestedResultMapId in property " + resultMapping.property);
-      }
-      // Issue #5: there should be no mappings without typehandler
-      if (resultMapping.nestedQueryId == null && resultMapping.nestedResultMapId == null && resultMapping.typeHandler == null) {
-        throw new IllegalStateException("No typehandler found for property " + resultMapping.property);
-      }
-      // Issue #4 and GH #39: column is optional only in nested resultmaps but not in the rest
-      if (resultMapping.nestedResultMapId == null && resultMapping.column == null && resultMapping.composites.isEmpty()) {
-        throw new IllegalStateException("Mapping is missing column attribute for property " + resultMapping.property);
-      }
-      if (resultMapping.getResultSet() != null) {
-        int numColumns = 0;
-        if (resultMapping.column != null) {
-          numColumns = resultMapping.column.split(",").length;
-        }
-        int numForeignColumns = 0;
-        if (resultMapping.foreignColumn != null) {
-          numForeignColumns = resultMapping.foreignColumn.split(",").length;
-        }
-        if (numColumns != numForeignColumns) {
-          throw new IllegalStateException("There should be the same number of columns and foreignColumns in property " + resultMapping.property);
-        }
-      }
-    }
+	public String getColumnPrefix() {
+		return columnPrefix;
+	}
 
-    private void resolveTypeHandler() {
-      if (resultMapping.typeHandler == null && resultMapping.javaType != null) {
-        Configuration configuration = resultMapping.configuration;
-        TypeHandlerRegistry typeHandlerRegistry = configuration.getTypeHandlerRegistry();
-        resultMapping.typeHandler = typeHandlerRegistry.getTypeHandler(resultMapping.javaType, resultMapping.jdbcType);
-      }
-    }
+	public List<ResultFlag> getFlags() {
+		return flags;
+	}
 
-    public Builder column(String column) {
-      resultMapping.column = column;
-      return this;
-    }
-  }
+	public List<ResultMapping> getComposites() {
+		return composites;
+	}
 
-  public String getProperty() {
-    return property;
-  }
+	public boolean isCompositeResult() {
+		return this.composites != null && !this.composites.isEmpty();
+	}
 
-  public String getColumn() {
-    return column;
-  }
+	public String getResultSet() {
+		return this.resultSet;
+	}
 
-  public Class<?> getJavaType() {
-    return javaType;
-  }
+	public String getForeignColumn() {
+		return foreignColumn;
+	}
 
-  public JdbcType getJdbcType() {
-    return jdbcType;
-  }
+	public void setForeignColumn(String foreignColumn) {
+		this.foreignColumn = foreignColumn;
+	}
 
-  public TypeHandler<?> getTypeHandler() {
-    return typeHandler;
-  }
+	public boolean isLazy() {
+		return lazy;
+	}
 
-  public String getNestedResultMapId() {
-    return nestedResultMapId;
-  }
+	public void setLazy(boolean lazy) {
+		this.lazy = lazy;
+	}
 
-  public String getNestedQueryId() {
-    return nestedQueryId;
-  }
+	public boolean isSimple() {
+		return this.nestedResultMapId == null && this.nestedQueryId == null && this.resultSet == null;
+	}
 
-  public Set<String> getNotNullColumns() {
-    return notNullColumns;
-  }
-
-  public String getColumnPrefix() {
-    return columnPrefix;
-  }
-
-  public List<ResultFlag> getFlags() {
-    return flags;
-  }
-
-  public List<ResultMapping> getComposites() {
-    return composites;
-  }
-
-  public boolean isCompositeResult() {
-    return this.composites != null && !this.composites.isEmpty();
-  }
-
-  public String getResultSet() {
-    return this.resultSet;
-  }
-
-  public String getForeignColumn() {
-    return foreignColumn;
-  }
-
-  public void setForeignColumn(String foreignColumn) {
-    this.foreignColumn = foreignColumn;
-  }
-
-  public boolean isLazy() {
-    return lazy;
-  }
-
-  public void setLazy(boolean lazy) {
-    this.lazy = lazy;
-  }
-
-  public boolean isSimple() {
-    return this.nestedResultMapId == null && this.nestedQueryId == null && this.resultSet == null;
-  }
-
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
-    }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-
-    ResultMapping that = (ResultMapping) o;
-
-    return property != null && property.equals(that.property);
-  }
+	@Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+		
+		ResultMapping that = (ResultMapping) o;
+		
+		return property != null && property.equals(that.property);
+	}
 
   @Override
   public int hashCode() {

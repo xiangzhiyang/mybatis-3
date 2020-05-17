@@ -49,104 +49,104 @@ import org.apache.ibatis.reflection.property.PropertyNamer;
  */
 public class Reflector {
 
-  private final Class<?> type;
-  private final String[] readablePropertyNames;
-  private final String[] writablePropertyNames;
-  private final Map<String, Invoker> setMethods = new HashMap<>();
-  private final Map<String, Invoker> getMethods = new HashMap<>();
-  private final Map<String, Class<?>> setTypes = new HashMap<>();
-  private final Map<String, Class<?>> getTypes = new HashMap<>();
-  private Constructor<?> defaultConstructor;
+	private final Class<?> type;
+	private final String[] readablePropertyNames;
+	private final String[] writablePropertyNames;
+	private final Map<String, Invoker> setMethods = new HashMap<>();
+	private final Map<String, Invoker> getMethods = new HashMap<>();
+	private final Map<String, Class<?>> setTypes = new HashMap<>();
+	private final Map<String, Class<?>> getTypes = new HashMap<>();
+	private Constructor<?> defaultConstructor;
 
-  private Map<String, String> caseInsensitivePropertyMap = new HashMap<>();
+	private Map<String, String> caseInsensitivePropertyMap = new HashMap<>();
 
-  public Reflector(Class<?> clazz) {
-    type = clazz;
-    addDefaultConstructor(clazz);
-    addGetMethods(clazz);
-    addSetMethods(clazz);
-    addFields(clazz);
-    readablePropertyNames = getMethods.keySet().toArray(new String[0]);
-    writablePropertyNames = setMethods.keySet().toArray(new String[0]);
-    for (String propName : readablePropertyNames) {
-      caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
-    }
-    for (String propName : writablePropertyNames) {
-      caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
-    }
-  }
+	public Reflector(Class<?> clazz) {
+		type = clazz;
+		addDefaultConstructor(clazz);
+		addGetMethods(clazz);
+		addSetMethods(clazz);
+		addFields(clazz);
+		readablePropertyNames = getMethods.keySet().toArray(new String[0]);
+		writablePropertyNames = setMethods.keySet().toArray(new String[0]);
+		for (String propName : readablePropertyNames) {
+			caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
+		}
+		for (String propName : writablePropertyNames) {
+			caseInsensitivePropertyMap.put(propName.toUpperCase(Locale.ENGLISH), propName);
+		}
+	}
 
-  private void addDefaultConstructor(Class<?> clazz) {
-    Constructor<?>[] constructors = clazz.getDeclaredConstructors();
-    Arrays.stream(constructors).filter(constructor -> constructor.getParameterTypes().length == 0)
-      .findAny().ifPresent(constructor -> this.defaultConstructor = constructor);
-  }
+	private void addDefaultConstructor(Class<?> clazz) {
+		Constructor<?>[] constructors = clazz.getDeclaredConstructors();
+		Arrays.stream(constructors).filter(constructor -> constructor.getParameterTypes().length == 0)
+			.findAny().ifPresent(constructor -> this.defaultConstructor = constructor);
+	}
 
-  private void addGetMethods(Class<?> clazz) {
-    Map<String, List<Method>> conflictingGetters = new HashMap<>();
-    Method[] methods = getClassMethods(clazz);
-    Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 0 && PropertyNamer.isGetter(m.getName()))
-      .forEach(m -> addMethodConflict(conflictingGetters, PropertyNamer.methodToProperty(m.getName()), m));
-    resolveGetterConflicts(conflictingGetters);
-  }
+	private void addGetMethods(Class<?> clazz) {
+		Map<String, List<Method>> conflictingGetters = new HashMap<>();
+		Method[] methods = getClassMethods(clazz);
+		Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 0 && PropertyNamer.isGetter(m.getName()))
+			.forEach(m -> addMethodConflict(conflictingGetters, PropertyNamer.methodToProperty(m.getName()), m));
+		resolveGetterConflicts(conflictingGetters);
+	}
 
-  private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
-    for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
-      Method winner = null;
-      String propName = entry.getKey();
-      boolean isAmbiguous = false;
-      for (Method candidate : entry.getValue()) {
-        if (winner == null) {
-          winner = candidate;
-          continue;
-        }
-        Class<?> winnerType = winner.getReturnType();
-        Class<?> candidateType = candidate.getReturnType();
-        if (candidateType.equals(winnerType)) {
-          if (!boolean.class.equals(candidateType)) {
-            isAmbiguous = true;
-            break;
-          } else if (candidate.getName().startsWith("is")) {
-            winner = candidate;
-          }
-        } else if (candidateType.isAssignableFrom(winnerType)) {
-          // OK getter type is descendant
-        } else if (winnerType.isAssignableFrom(candidateType)) {
-          winner = candidate;
-        } else {
-          isAmbiguous = true;
-          break;
-        }
-      }
-      addGetMethod(propName, winner, isAmbiguous);
-    }
-  }
+	private void resolveGetterConflicts(Map<String, List<Method>> conflictingGetters) {
+		for (Entry<String, List<Method>> entry : conflictingGetters.entrySet()) {
+			Method winner = null;
+			String propName = entry.getKey();
+			boolean isAmbiguous = false;
+			for (Method candidate : entry.getValue()) {
+				if (winner == null) {
+					winner = candidate;
+					continue;
+				}
+				Class<?> winnerType = winner.getReturnType();
+				Class<?> candidateType = candidate.getReturnType();
+				if (candidateType.equals(winnerType)) {
+					if (!boolean.class.equals(candidateType)) {
+						isAmbiguous = true;
+						break;
+					} else if (candidate.getName().startsWith("is")) {
+						winner = candidate;
+					}
+				} else if (candidateType.isAssignableFrom(winnerType)) {
+					// OK getter type is descendant
+				} else if (winnerType.isAssignableFrom(candidateType)) {
+					winner = candidate;
+				} else {
+					isAmbiguous = true;
+					break;
+				}
+			}
+			addGetMethod(propName, winner, isAmbiguous);
+		}
+	}
 
-  private void addGetMethod(String name, Method method, boolean isAmbiguous) {
-    MethodInvoker invoker = isAmbiguous
-        ? new AmbiguousMethodInvoker(method, MessageFormat.format(
-            "Illegal overloaded getter method with ambiguous type for property ''{0}'' in class ''{1}''. This breaks the JavaBeans specification and can cause unpredictable results.",
-            name, method.getDeclaringClass().getName()))
-        : new MethodInvoker(method);
-    getMethods.put(name, invoker);
-    Type returnType = TypeParameterResolver.resolveReturnType(method, type);
-    getTypes.put(name, typeToClass(returnType));
-  }
+	private void addGetMethod(String name, Method method, boolean isAmbiguous) {
+		MethodInvoker invoker = isAmbiguous 
+				? new AmbiguousMethodInvoker(method, MessageFormat.format(
+						"Illegal overloaded getter method with ambiguous type for property ''{0}'' in class ''{1}''. This breaks the JavaBeans specification and can cause unpredictable results.", 
+						name, method.getDeclaringClass().getName())) 
+						: new MethodInvoker(method);
+		getMethods.put(name, invoker);
+		Type returnType = TypeParameterResolver.resolveReturnType(method, type);
+		getTypes.put(name, typeToClass(returnType));
+	}
 
-  private void addSetMethods(Class<?> clazz) {
-    Map<String, List<Method>> conflictingSetters = new HashMap<>();
-    Method[] methods = getClassMethods(clazz);
-    Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 1 && PropertyNamer.isSetter(m.getName()))
-      .forEach(m -> addMethodConflict(conflictingSetters, PropertyNamer.methodToProperty(m.getName()), m));
-    resolveSetterConflicts(conflictingSetters);
-  }
+	private void addSetMethods(Class<?> clazz) {
+		Map<String, List<Method>> conflictingSetters = new HashMap<>();
+		Method[] methods = getClassMethods(clazz);
+		Arrays.stream(methods).filter(m -> m.getParameterTypes().length == 1 && PropertyNamer.isSetter(m.getName()))
+			.forEach(m -> addMethodConflict(conflictingSetters, PropertyNamer.methodToProperty(m.getName()), m));
+		resolveSetterConflicts(conflictingSetters);
+	}
 
-  private void addMethodConflict(Map<String, List<Method>> conflictingMethods, String name, Method method) {
-    if (isValidPropertyName(name)) {
-      List<Method> list = conflictingMethods.computeIfAbsent(name, k -> new ArrayList<>());
-      list.add(method);
-    }
-  }
+	private void addMethodConflict(Map<String, List<Method>> conflictingMethods, String name, Method method) {
+		if (isValidPropertyName(name)) {
+			List<Method> list = conflictingMethods.computeIfAbsent(name, k -> new ArrayList<>());
+			list.add(method);
+		}
+	}
 
   private void resolveSetterConflicts(Map<String, List<Method>> conflictingSetters) {
     for (Entry<String, List<Method>> entry : conflictingSetters.entrySet()) {
